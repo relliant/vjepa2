@@ -1,6 +1,6 @@
 cpus_per_task: 16
 eval_name: video_classification_frozen
-folder: /your_folder/evals/vitl/ssv2
+folder: experiments/evals/vitl/ssv2
 mem_per_gpu: 220G
 nodes: 8
 max_workers: 8
@@ -13,8 +13,8 @@ experiment:
     num_probe_blocks: 4
   data:
     dataset_type: VideoDataset
-    dataset_train: /your_data_path/ssv2_train_paths.csv
-    dataset_val: /your_data_path/ssv2_val_paths.csv
+    dataset_train: dataset/ssv2_train_paths.csv
+    dataset_val: dataset/ssv2_val_paths.csv
     frame_step: 4
     frames_per_clip: 16
     num_classes: 174
