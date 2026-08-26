@@ -22,27 +22,28 @@ export OMP_NUM_THREADS="${OMP_NUM_THREADS:-4}"
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1,2,3,4,5,6,7}"
 export PYTHONUNBUFFERED=1
 
-# The cluster's working scripts activate a prepared Conda environment. The
-# repository-local .venv may only be a uv-created Python shim without torch,
-# so prefer the known environment and allow an explicit override.
+# Use the prepared uv environment on the new /data-ai filesystem. Do not run
+# uv resolution on the compute node; point directly at its Python executable.
 if [[ -n "${VJEPA_PYTHON:-}" ]]; then
     PYTHON_BIN="${VJEPA_PYTHON}"
-elif [[ -f "/share/app/anaconda3/etc/profile.d/conda.sh" ]]; then
-    source "/share/app/anaconda3/etc/profile.d/conda.sh"
-    conda activate "${VJEPA_CONDA_ENV:-vjepa2}"
-    PYTHON_BIN="$(command -v python)"
-elif [[ -n "${CONDA_PREFIX:-}" ]]; then
-    PYTHON_BIN="$(command -v python)"
+elif [[ -n "${VJEPA_UV_ENV:-}" && -x "${VJEPA_UV_ENV}/bin/python" ]]; then
+    source "${VJEPA_UV_ENV}/bin/activate" 2>/dev/null || true
+    PYTHON_BIN="${VJEPA_UV_ENV}/bin/python"
+elif [[ -n "${VJEPA_UV_ENV:-}" ]]; then
+    echo "VJEPA_UV_ENV has no executable bin/python: ${VJEPA_UV_ENV}" >&2
+    exit 1
 elif [[ -x "${REPO_ROOT}/.venv/bin/python" ]]; then
-    source "${REPO_ROOT}/.venv/bin/activate"
+    source "${REPO_ROOT}/.venv/bin/activate" 2>/dev/null || true
     PYTHON_BIN="${REPO_ROOT}/.venv/bin/python"
 else
-    PYTHON_BIN="$(command -v python)"
+    echo "No uv Python environment found." >&2
+    echo "Set VJEPA_PYTHON=/data-ai/.../bin/python or VJEPA_UV_ENV=/data-ai/..." >&2
+    exit 1
 fi
 
 "${PYTHON_BIN}" -c 'import torch, yaml' || {
     echo "The selected Python environment is missing torch or yaml." >&2
-    echo "Set VJEPA_PYTHON to the prepared interpreter or VJEPA_CONDA_ENV to its Conda name." >&2
+    echo "Set VJEPA_PYTHON to the prepared interpreter or VJEPA_UV_ENV to its uv environment directory." >&2
     exit 1
 }
 
