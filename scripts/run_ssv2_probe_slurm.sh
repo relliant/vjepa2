@@ -2,8 +2,8 @@
 # Web/portal Slurm entrypoint. Submit this file as one job with 8 GPUs.
 # Account, partition, QoS, and time can be set in the web form.
 #SBATCH --nodes=1
-# Match the cluster's working multi-GPU scripts.
-#SBATCH --ntasks=8
+# One Slurm task launches eight local torchrun workers.
+#SBATCH --ntasks=1
 #SBATCH --gres=gpu:8
 #SBATCH --cpus-per-task=16
 #SBATCH --mem-per-gpu=220G
