@@ -33,4 +33,7 @@ configs/local
 
 pretrained_model/
 build/
-dataset/
+
+# Local dataset mount; create it with tools/link_ssv2_dataset.sh.
+dataset/something_something_2
+dataset/something_something_2/
