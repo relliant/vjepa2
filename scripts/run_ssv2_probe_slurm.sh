@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Web/portal Slurm entrypoint. Submit this file as one job with 8 GPUs.
 # Account, partition, QoS, and time can be set in the web form.
-#SBATCH --job-name=vjepa2-ssv2-probe
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:8
