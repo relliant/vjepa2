@@ -22,12 +22,29 @@ export OMP_NUM_THREADS="${OMP_NUM_THREADS:-4}"
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1,2,3,4,5,6,7}"
 export PYTHONUNBUFFERED=1
 
-if [[ -x "${REPO_ROOT}/.venv/bin/python" ]]; then
+# The cluster's working scripts activate a prepared Conda environment. The
+# repository-local .venv may only be a uv-created Python shim without torch,
+# so prefer the known environment and allow an explicit override.
+if [[ -n "${VJEPA_PYTHON:-}" ]]; then
+    PYTHON_BIN="${VJEPA_PYTHON}"
+elif [[ -f "/share/app/anaconda3/etc/profile.d/conda.sh" ]]; then
+    source "/share/app/anaconda3/etc/profile.d/conda.sh"
+    conda activate "${VJEPA_CONDA_ENV:-vjepa2}"
+    PYTHON_BIN="$(command -v python)"
+elif [[ -n "${CONDA_PREFIX:-}" ]]; then
+    PYTHON_BIN="$(command -v python)"
+elif [[ -x "${REPO_ROOT}/.venv/bin/python" ]]; then
     source "${REPO_ROOT}/.venv/bin/activate"
     PYTHON_BIN="${REPO_ROOT}/.venv/bin/python"
 else
     PYTHON_BIN="$(command -v python)"
 fi
+
+"${PYTHON_BIN}" -c 'import torch, yaml' || {
+    echo "The selected Python environment is missing torch or yaml." >&2
+    echo "Set VJEPA_PYTHON to the prepared interpreter or VJEPA_CONDA_ENV to its Conda name." >&2
+    exit 1
+}
 
 echo "=== V-JEPA 2 SSv2 probe ==="
 echo "host=$(hostname)"
