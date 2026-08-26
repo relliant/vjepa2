@@ -7,6 +7,10 @@
 #SBATCH --gres=gpu:8
 #SBATCH --cpus-per-task=16
 #SBATCH --mem-per-gpu=220G
+# The web submitter supplies the job name (for example, train_vjepa).
+# Keep the output naming convention expected by the web log viewer.
+#SBATCH --output=slurm-%x-%j.out
+#SBATCH --error=slurm-%x-%j.err
 
 set -euo pipefail
 
