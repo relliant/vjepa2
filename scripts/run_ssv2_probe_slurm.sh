@@ -20,13 +20,19 @@
 
 set -euo pipefail
 
+# The CHESS launcher starts batch jobs from the user's home directory.  Set and
+# enter the repository explicitly before resolving any relative paths.
+BASE="${BASE:-/data-ai/lsy_ws}"
+REPO_ROOT="${REPO_ROOT:-${BASE}/project/vjepa2}"
+cd "${REPO_ROOT}" || {
+    echo "ERROR: repository directory not found: ${REPO_ROOT}" >&2
+    exit 1
+}
+
 # ------------------------------------------------------------------------------
 # Paths and run configuration
 # ------------------------------------------------------------------------------
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="${REPO_ROOT:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
-BASE="${BASE:-/data-ai/lsy_ws}"
 VENV="${VENV:-${REPO_ROOT}/.venv}"
 CONFIG="${CONFIG:-${REPO_ROOT}/configs/eval/vitg-384/ssv2.yaml}"
 LOG_DIR="${LOG_DIR:-${REPO_ROOT}/logs}"
@@ -88,7 +94,6 @@ require_file "${VENV}/bin/python" "uv environment Python"
 [[ -x "${VENV}/bin/python" ]] || die "Python is not executable: ${VENV}/bin/python"
 
 mkdir -p "${LOG_DIR}"
-cd "${REPO_ROOT}"
 
 # Emit diagnostics before importing PyTorch.  This makes the batch entrypoint
 # observable immediately in CHESS's web log viewer.
