@@ -90,40 +90,9 @@ require_file "${VENV}/bin/python" "uv environment Python"
 mkdir -p "${LOG_DIR}"
 cd "${REPO_ROOT}"
 
-# Activate the already-created uv environment for auxiliary executables and
-# make the selected interpreter explicit for the actual job.
-source "${VENV}/bin/activate"
+# Emit diagnostics before importing PyTorch.  This makes the batch entrypoint
+# observable immediately in CHESS's web log viewer.
 PYTHON_BIN="${PYTHON_BIN:-${VENV}/bin/python}"
-[[ -x "${PYTHON_BIN}" ]] || die "Python executable is not executable: ${PYTHON_BIN}"
-
-if ! "${PYTHON_BIN}" - <<'PY'
-import torch
-import yaml
-import decord
-
-print(f"torch={torch.__version__}")
-print(f"cuda_available={torch.cuda.is_available()}")
-print(f"cuda_device_count={torch.cuda.device_count()}")
-print(f"decord={getattr(decord, '__version__', 'installed')}")
-if not torch.cuda.is_available():
-    raise RuntimeError("PyTorch cannot see a CUDA device")
-PY
-then
-    die "Python preflight failed; verify torch, pyyaml, decord, and CUDA in ${VENV}"
-fi
-
-CUDA_COUNT="$("${PYTHON_BIN}" -c 'import torch; print(torch.cuda.device_count())')"
-[[ "${CUDA_COUNT}" =~ ^[0-9]+$ ]] || die "Could not determine CUDA device count"
-(( CUDA_COUNT >= GPUS_PER_NODE )) || die "Requested ${GPUS_PER_NODE} GPUs but PyTorch sees ${CUDA_COUNT}"
-
-if command -v nvidia-smi >/dev/null 2>&1; then
-    nvidia-smi --query-gpu=index,name,memory.total --format=csv,noheader
-fi
-
-# ------------------------------------------------------------------------------
-# Diagnostics
-# ------------------------------------------------------------------------------
-
 LOG_FILE="${LOG_DIR}/ssv2_probe_${JOB_ID}.log"
 {
     echo "=== V-JEPA 2 SSv2 attentive probe ==="
@@ -147,12 +116,42 @@ LOG_FILE="${LOG_DIR}/ssv2_probe_${JOB_ID}.log"
     echo "==============================="
 } | tee -a "${LOG_FILE}"
 
+# Activate the already-created uv environment for auxiliary executables and
+# make the selected interpreter explicit for the actual job.
+source "${VENV}/bin/activate"
+[[ -x "${PYTHON_BIN}" ]] || die "Python executable is not executable: ${PYTHON_BIN}"
+
+if ! "${PYTHON_BIN}" - <<'PY'
+import torch
+import yaml
+import decord
+
+print(f"torch={torch.__version__}")
+print(f"cuda_available={torch.cuda.is_available()}")
+print(f"cuda_device_count={torch.cuda.device_count()}")
+print(f"decord={getattr(decord, '__version__', 'installed')}")
+if not torch.cuda.is_available():
+    raise RuntimeError("PyTorch cannot see a CUDA device")
+PY
+then
+    die "Python preflight failed; verify torch, pyyaml, decord, and CUDA in ${VENV}"
+fi
+
+CUDA_COUNT="$("${PYTHON_BIN}" -c 'import torch; print(torch.cuda.device_count())')"
+[[ "${CUDA_COUNT}" =~ ^[0-9]+$ ]] || die "Could not determine CUDA device count"
+(( CUDA_COUNT >= GPUS_PER_NODE )) || die "Requested ${GPUS_PER_NODE} GPUs but PyTorch sees ${CUDA_COUNT}"
+
+if command -v nvidia-smi >/dev/null 2>&1; then
+    nvidia-smi --query-gpu=index,name,memory.total --format=csv,noheader | tee -a "${LOG_FILE}"
+fi
+
 # ------------------------------------------------------------------------------
-# Launch one local process per GPU
+# Launch one local process per GPU through a single Slurm task
 # ------------------------------------------------------------------------------
 
 echo "Starting torchrun; live output is appended to ${LOG_FILE}" | tee -a "${LOG_FILE}"
 set +e
+srun --ntasks=1 --kill-on-bad-exit=1 \
 "${PYTHON_BIN}" -u -m torch.distributed.run \
     --standalone \
     --nnodes=1 \
