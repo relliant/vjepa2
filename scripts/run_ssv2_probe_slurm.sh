@@ -15,8 +15,11 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=256G
 #SBATCH --time=48:00:00
-#SBATCH --output=slurm-%x-%j.out
-#SBATCH --error=slurm-%x-%j.err
+# Slurm opens these files before executing the script.  Use absolute paths
+# because CHESS starts jobs from the user's home directory by default.
+#SBATCH --chdir=/data-ai/lsy_ws/project/vjepa2
+#SBATCH --output=/data-ai/lsy_ws/project/vjepa2/scripts/slurm-%x-%j.out
+#SBATCH --error=/data-ai/lsy_ws/project/vjepa2/scripts/slurm-%x-%j.err
 
 set -euo pipefail
 
